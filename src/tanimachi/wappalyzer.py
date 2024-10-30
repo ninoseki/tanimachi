@@ -13,16 +13,26 @@ from .utils import load_categories, load_fingerprints, load_groups
 
 
 def is_javascript(entry: schemas.Entry) -> bool:
-    return entry.request.method == "GET" and entry.response.content.mime_type in [
-        "application/javascript",
-        "text/javascript",
-    ]
+    return entry.request.method == "GET" and any(
+        [
+            entry.response.content.mime_type.startswith("application/javascript"),
+            entry.response.content.mime_type.startswith("text/javascript"),
+        ]
+    )
 
 
 def is_stylesheet(entry: schemas.Entry) -> bool:
-    return entry.request.method == "GET" and entry.response.content.mime_type in [
-        "text/css",
-    ]
+    return (
+        entry.request.method == "GET"
+        and entry.response.content.mime_type.startswith("text/css")
+    )
+
+
+def is_html(entry: schemas.Entry) -> bool:
+    return (
+        entry.request.method == "GET"
+        and entry.response.content.mime_type.startswith("text/html")
+    )
 
 
 class HarWrapper(schemas.Har):
@@ -51,7 +61,7 @@ class HarWrapper(schemas.Har):
     @cached_property
     def html_entry(self):
         for entry in self.log.entries:
-            if entry.response.content.mime_type == "text/html":
+            if is_html(entry):
                 return entry
 
         raise ValueError("No HTML entry found")
