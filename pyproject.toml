@@ -1,13 +1,13 @@
 [project]
 name = "tanimachi"
 dynamic = ["version"]
-description = "Add your description here"
+description = "An opinionated Wappalyzer compatible fingerprint engine works along with HAR"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.10"
 dependencies = [
     "loguru~=0.7",
     "pydantic~=2.9",
-    "returns>=0.23.0",
+    "returns~=0.23",
     "selectolax~=0.3",
 ]
 
@@ -20,14 +20,16 @@ source = "uv-dynamic-versioning"
 
 [tool.uv]
 dev-dependencies = [
-    "pytest>=8.3.3",
-    "pytest-pretty>=1.2.0",
-    "pytest-randomly>=3.16.0",
-    "pytest-github-actions-annotate-failures>=0.2.0",
+    "build>=1.2.2",
     "gitpython>=3.1.43",
     "lefthook>=1.8.2",
-    "build>=1.2.2",
+    "pytest>=8.3.3",
+    "pytest-github-actions-annotate-failures>=0.2.0",
+    "pytest-pretty>=1.2.0",
+    "pytest-randomly>=3.16.0",
+    "ruff>=0.7.1",
     "twine>=5.1.1",
+    "uv-sort>=0.4.0",
 ]
 
 [tool.ruff.lint]
