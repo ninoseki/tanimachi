@@ -16,12 +16,21 @@ class Pattern(BaseModel):
     confidence: int = 100
 
 
-def prepare_pattern(v: str | list[str]) -> list[Pattern]:
+def prepare_pattern(v: str | list[str], *, set_regex: bool = True) -> list[Pattern]:
+    """Prepare a pattern for given string(s)
+
+    Args:
+        v (str | list[str]): string(s)
+        set_regex (bool, optional): Set False only for DOM. DOM selector is not a regex so. Defaults to True.
+
+    Returns:
+        list[Pattern]: Patterns
+    """
     pattern_objects: list[Pattern] = []
 
     if isinstance(v, list):
         for p in v:
-            pattern_objects.extend(prepare_pattern(p))
+            pattern_objects.extend(prepare_pattern(p, set_regex=set_regex))
 
         return pattern_objects
 
@@ -30,14 +39,15 @@ def prepare_pattern(v: str | list[str]) -> list[Pattern]:
     for index, expression in enumerate(patterns):
         if index == 0:
             attrs["string"] = expression
-            try:
-                attrs["regex"] = re.compile(expression, re.I)  # type: ignore
-            except re.error as e:
-                # Wappalyzer is a JavaScript application therefore some of the regex wont compile in Python.
-                logger.debug(f"Caught '{e}' compiling regex: {patterns}")
-                # regex that never matches:
-                # http://stackoverflow.com/a/1845097/413622
-                attrs["regex"] = re.compile(r"(?!x)x")  # type: ignore
+            if set_regex:
+                try:
+                    attrs["regex"] = re.compile(expression, re.I)  # type: ignore
+                except re.error as e:
+                    # Wappalyzer is a JavaScript application therefore some of the regex wont compile in Python.
+                    logger.debug(f"Caught '{e}' compiling regex: {patterns}")
+                    # regex that never matches:
+                    # http://stackoverflow.com/a/1845097/413622
+                    attrs["regex"] = re.compile(r"(?!x)x")  # type: ignore
         else:
             attr = expression.split(":")
             if len(attr) > 1:
@@ -85,7 +95,7 @@ class DomSelector(BaseModel):
 
 
 def prepare_string_dom(selector: str) -> list[DomSelector]:
-    patterns = prepare_pattern(selector)
+    patterns = prepare_pattern(selector, set_regex=False)
     return [
         DomSelector(
             selector=pattern.string,
