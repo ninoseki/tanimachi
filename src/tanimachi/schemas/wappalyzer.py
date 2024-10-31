@@ -1,3 +1,4 @@
+import itertools
 import re
 from collections.abc import Mapping
 from typing import Annotated, Any
@@ -83,14 +84,28 @@ class DomSelector(BaseModel):
     attributes: Mapping[str, list[Pattern]] | None = None
 
 
+def prepare_string_dom(selector: str) -> list[DomSelector]:
+    patterns = prepare_pattern(selector)
+    return [
+        DomSelector(
+            selector=pattern.string,
+            exists=True,
+            attributes={selector: [pattern]},
+        )
+        for pattern in patterns
+    ]
+
+
 def prepare_dom(
     thing: str | list[str] | dict[str, dict[str, str | list[str]]],
 ) -> list[DomSelector]:
     if isinstance(thing, str):
-        return [DomSelector(selector=thing, exists=True)]
+        return prepare_string_dom(thing)
 
     if isinstance(thing, list):
-        return [DomSelector(selector=_o, exists=True) for _o in thing]
+        return list(
+            itertools.chain.from_iterable(prepare_string_dom(_o) for _o in thing)
+        )
 
     selectors: list[DomSelector] = []
     if isinstance(thing, dict):
@@ -115,6 +130,7 @@ def prepare_dom(
                     attributes=_prep_attr_patterns,
                 )
             )
+
     return selectors
 
 

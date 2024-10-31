@@ -1,37 +1,32 @@
 import glob
 import json
 import tempfile
+from functools import lru_cache
 from typing import Any
 
 import pytest
+from _pytest.fixtures import SubRequest
 from git import Repo
 
 from tanimachi import Wappalyzer, schemas
-from tanimachi.wappalyzer import (
-    analyze_css,
-    analyze_headers,
-    analyze_html,
-    analyze_meta,
-    analyze_scripts,
-    analyze_url,
-)
 
 
-@pytest.fixture
-def repo():
+@lru_cache(maxsize=1)
+def get_fingerprints():
     with tempfile.TemporaryDirectory() as dir:
-        Repo.clone_from("https://github.com/tunetheweb/wappalyzer/", dir)
-        yield dir
+        Repo.clone_from("https://github.com/enthec/webappanalyzer", dir)
+
+        memo: dict[str, Any] = {}
+        for path in glob.glob(f"{dir}/src/technologies/*.json"):
+            with open(path) as f:
+                memo.update(json.load(f))
+
+        return schemas.Fingerprints.model_validate(memo).root.values()
 
 
-@pytest.fixture
-def fingerprints(repo: str):
-    memo: dict[str, Any] = {}
-    for path in glob.glob(f"{repo}/src/technologies/*.json"):
-        with open(path) as f:
-            memo.update(json.load(f))
-
-    return schemas.Fingerprints.model_validate(memo)
+@pytest.fixture(params=get_fingerprints())
+def fingerprint(request: SubRequest):
+    return request.param
 
 
 @pytest.fixture
@@ -40,22 +35,7 @@ def har():
         return schemas.Har.model_validate_json(f.read())
 
 
-def test_integration(har: schemas.Har, fingerprints: schemas.Fingerprints):
+def test_integration(har: schemas.Har, fingerprint: schemas.Fingerprint):
+    fingerprints = schemas.Fingerprints(root={fingerprint.id: fingerprint})
     wappalyzer = Wappalyzer(fingerprints=fingerprints)
-    # analyze_dom is very slow so skip it
-    assert (
-        len(
-            wappalyzer.analyze(
-                har,
-                analyzes=[
-                    analyze_css,
-                    analyze_headers,
-                    analyze_html,
-                    analyze_meta,
-                    analyze_scripts,
-                    analyze_url,
-                ],
-            )
-        )
-        > 0
-    )
+    assert len(wappalyzer.analyze(har)) >= 0

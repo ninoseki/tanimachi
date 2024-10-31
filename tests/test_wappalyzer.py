@@ -34,6 +34,48 @@ def test_analyze(har: schemas.Har, fingerprints: schemas.Fingerprints):
             1,
         ),
         (schemas.Fingerprint(dom={"h1": {"text": "foo"}}, website="dummy"), 0),  # type: ignore
+        (
+            schemas.Fingerprint(
+                dom={
+                    "link[id='elpt-portfolio-css-css'][href*='portfolio-elementor']": {
+                        "attributes": {"href": "ver=([\\d\\.]+)\\;version:\\1"}
+                    },
+                    "style#powerfolio-portfolio-block-style-inline-css": {"exists": ""},
+                },  # type: ignore
+                website="dummy",
+            ),
+            0,
+        ),
+        (
+            schemas.Fingerprint(
+                dom="h1\\;confidence:40",  # type: ignore
+                website="dummy",
+            ),
+            1,
+        ),
+        (
+            schemas.Fingerprint(
+                dom="form[name='formLogin'][action='login.aspx' i][id='formLogin']\\;confidence:40",  # type: ignore
+                website="dummy",
+            ),
+            0,
+        ),
+        (
+            schemas.Fingerprint(
+                dom=["h1\\;confidence:40"],  # type: ignore
+                website="dummy",
+            ),
+            1,
+        ),
+        (
+            schemas.Fingerprint(
+                dom=[
+                    "form[name='formLogin'][action='login.aspx' i][id='formLogin']\\;confidence:40"  # type: ignore
+                ],
+                website="dummy",
+            ),
+            0,
+        ),
     ],
 )
 def test_analyze_dom(har: schemas.Har, fingerprint: schemas.Fingerprint, expected: int):
