@@ -76,6 +76,7 @@ def prepare_headers(v: dict[str, str | list[str]]) -> Mapping[str, list[Pattern]
 
 
 Headers = Annotated[Mapping[str, list[Pattern]], BeforeValidator(prepare_headers)]
+Cookies = Headers
 
 
 def prepare_meta(v: str | list[str] | dict[str, str | list[str]]):
@@ -221,6 +222,7 @@ class Fingerprint(APIModel):
     dom: Dom = Field(default_factory=list)
 
     headers: Headers = Field(default_factory=dict)
+    cookies: Cookies = Field(default_factory=dict)
     meta: Meta = Field(default_factory=dict)
 
     html: Patterns = Field(default_factory=list)

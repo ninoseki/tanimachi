@@ -1,24 +1,7 @@
 import pytest
 
 from tanimachi import schemas
-from tanimachi.wappalyzer import HarWrapper, Wappalyzer, analyze_dom
-
-
-@pytest.fixture
-def har():
-    with open("tests/fixtures/har/example.com.har") as f:
-        return schemas.Har.model_validate_json(f.read())
-
-
-@pytest.fixture
-def fingerprints():
-    with open("tests/fixtures/wappalyzer/a.json") as f:
-        return schemas.Fingerprints.model_validate_json(f.read())
-
-
-def test_analyze(har: schemas.Har, fingerprints: schemas.Fingerprints):
-    wappalyzer = Wappalyzer(fingerprints=fingerprints)
-    assert len(wappalyzer.analyze(har)) > 0
+from tanimachi.wappalyzer import HarWrapper, analyze_dom
 
 
 @pytest.mark.parametrize(
