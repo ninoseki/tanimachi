@@ -35,7 +35,7 @@ wappalyzer = Wappalyzer(fingerprints, categories=categories, groups=groups)
 detections = wappalyzer.analyze(har)
 ```
 
-## Known Limitation
+## Known Limitations
 
 - HAR file should only have one page. Multi-page HAR is not supported.
 - The following fields are not supported:
