@@ -1,6 +1,13 @@
 # tanimachi
 
-An opinionated Wappalyzer compatible fingerprint engine works along with HAR.
+An opinionated Wappalyzer compatible fingerprint engine works along with [HAR](<https://en.wikipedia.org/wiki/HAR_(file_format)>).
+
+> [!NOTE]
+> This repository does not contain fingerprints themselves.
+> You need to get them from Wappalyzer compatible repositories such as:
+>
+> - [enthec/webappanalyzer](https://github.com/enthec/webappanalyzer)
+> - [tunetheweb/wappalyzer](https://github.com/tunetheweb/wappalyzer)
 
 ## Installation
 
@@ -12,26 +19,20 @@ pip install tanimachi
 
 ```py
 from tanimachi import (
+    Categories,
+    Fingerprints,
+    Groups,
+    Har,
     Wappalyzer,
-    load_categories,
-    load_fingerprints,
-    load_groups,
-    load_har,
 )
 
-fingerprints = load_fingerprints("/path/to/technologies/*.json")
-# optional
-categories = load_categories("/path/to/categories.json")
-# optional
-groups = load_groups("/path/to/groups.json")
+fingerprints = Fingerprints.model_validate_pattern("/path/to/technologies/*.json")
+categories = Categories.model_validate_file("/path/to/categories.json")
+groups = Groups.model_validate_file("/path/to/groups.json")
+har = Har.model_validate_file("./tests/fixtures/har/example.har")
 
-har = load_har("/path/to/har")
-
-wappalyzer = Wappalyzer(fingerprints, categories, groups)
+wappalyzer = Wappalyzer(fingerprints, categories=categories, groups=groups)
 detections = wappalyzer.analyze(har)
-
-for detection in detections:
-    print(detection)
 ```
 
 ## Known Limitation
@@ -42,3 +43,7 @@ for detection in detections:
   - `probe`
   - `robots`
   - `xhr`
+
+## Credits
+
+Wappalyzer detection logic (functions, etc.) are forked from [chorsley/python-Wappalyzer](https://github.com/chorsley/python-Wappalyzer).
