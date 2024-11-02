@@ -7,6 +7,7 @@ from loguru import logger
 from pydantic import BaseModel, BeforeValidator, Field, RootModel, model_validator
 
 from .api_model import APIModel
+from .mixins import FileMixin, PatternMixin
 
 
 class Pattern(BaseModel):
@@ -173,7 +174,7 @@ class Group(BaseModel):
     name: str
 
 
-class Groups(RootModel):
+class Groups(FileMixin, PatternMixin, RootModel):
     root: dict[str, Group]
 
     @model_validator(mode="after")
@@ -191,7 +192,7 @@ class Category(BaseModel):
     priority: int = 0
 
 
-class Categories(RootModel):
+class Categories(FileMixin, PatternMixin, RootModel):
     root: dict[str, Category]
 
     @model_validator(mode="after")
@@ -233,7 +234,7 @@ class Fingerprint(APIModel):
     css: Patterns = Field(default_factory=list)
 
 
-class Fingerprints(RootModel):
+class Fingerprints(PatternMixin, FileMixin, RootModel):
     root: dict[str, Fingerprint]
 
     @model_validator(mode="after")

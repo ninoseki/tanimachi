@@ -3,6 +3,7 @@ from functools import cached_property
 from pydantic import AnyUrl, AwareDatetime, BaseModel, Field
 
 from .api_model import APIModel
+from .mixins import FileMixin
 
 
 class Creator(BaseModel):
@@ -159,5 +160,5 @@ class Log(BaseModel):
     comment: str | None = None
 
 
-class Har(BaseModel):
+class Har(FileMixin):
     log: Log
