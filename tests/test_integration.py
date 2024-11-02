@@ -29,12 +29,6 @@ def fingerprint(request: SubRequest):
     return request.param
 
 
-@pytest.fixture
-def har():
-    with open("tests/fixtures/har/example.com.har") as f:
-        return schemas.Har.model_validate_json(f.read())
-
-
 def test_integration(har: schemas.Har, fingerprint: schemas.Fingerprint):
     fingerprints = schemas.Fingerprints(root={fingerprint.id: fingerprint})
     wappalyzer = Wappalyzer(fingerprints=fingerprints)

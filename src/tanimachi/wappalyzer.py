@@ -159,6 +159,30 @@ def analyze_headers(
     return detections
 
 
+def analyze_cookies(
+    har: HarWrapper, fingerprint: schemas.Fingerprint
+) -> list[Detection]:
+    detections: list[Detection] = []
+
+    for name, patterns in fingerprint.cookies.items():
+        if name in har.cookies:
+            content = har.cookies[name]
+            for pattern in patterns:
+                if pattern.regex.search(content):
+                    detections.append(
+                        Detection(
+                            url=har.url,
+                            fingerprint=fingerprint,
+                            app_type="cookies",
+                            pattern=pattern,
+                            value=content,
+                            key=name,
+                        )
+                    )
+
+    return detections
+
+
 def analyze_scripts(
     har: HarWrapper, fingerprint: schemas.Fingerprint
 ) -> list[Detection]:
@@ -328,6 +352,19 @@ def filter_by_requires_category(detections: list[Detection]) -> list[Detection]:
     return filtered
 
 
+def filter_by_excludes(detections: list[Detection]) -> list[Detection]:
+    excludes = set(
+        itertools.chain.from_iterable(
+            list(detection.fingerprint.excludes) for detection in detections
+        )
+    )
+    return [
+        detection
+        for detection in detections
+        if detection.fingerprint.id not in excludes
+    ]
+
+
 Analyze = Callable[[HarWrapper, schemas.Fingerprint], list[Detection]]
 
 
@@ -424,6 +461,7 @@ class Wappalyzer:
         analyzes = analyzes or [
             analyze_url,
             analyze_headers,
+            analyze_cookies,
             analyze_scripts,
             analyze_css,
             analyze_meta,
@@ -441,9 +479,12 @@ class Wappalyzer:
 
         filtered = cast(
             list[Detection],
-            pipe(list[Detection], filter_by_requires, filter_by_requires_category)(
-                detections
-            ),
+            pipe(
+                list[Detection],
+                filter_by_requires,
+                filter_by_requires_category,
+                filter_by_excludes,
+            )(detections),
         )
 
         self._set_categories(filtered)
