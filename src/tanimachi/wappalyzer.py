@@ -1,7 +1,6 @@
 import itertools
 from collections.abc import Callable
-from functools import cached_property
-from pathlib import Path
+from functools import cached_property, partial
 from typing import Any, cast
 
 from pydantic import BaseModel
@@ -9,7 +8,6 @@ from returns.pipeline import pipe
 from selectolax.parser import HTMLParser
 
 from . import schemas
-from .utils import load_categories, load_fingerprints, load_groups
 
 
 def is_javascript(entry: schemas.Entry) -> bool:
@@ -141,20 +139,22 @@ def analyze_headers(
     detections: list[Detection] = []
 
     for name, patterns in fingerprint.headers.items():
-        if name in har.headers:
-            content = har.headers[name]
-            for pattern in patterns:
-                if pattern.regex.search(content):
-                    detections.append(
-                        Detection(
-                            url=har.url,
-                            fingerprint=fingerprint,
-                            app_type="headers",
-                            pattern=pattern,
-                            value=content,
-                            key=name,
-                        )
+        if name not in har.headers:
+            continue
+
+        content = har.headers[name]
+        for pattern in patterns:
+            if pattern.regex.search(content):
+                detections.append(
+                    Detection(
+                        url=har.url,
+                        fingerprint=fingerprint,
+                        app_type="headers",
+                        pattern=pattern,
+                        value=content,
+                        key=name,
                     )
+                )
 
     return detections
 
@@ -165,20 +165,22 @@ def analyze_cookies(
     detections: list[Detection] = []
 
     for name, patterns in fingerprint.cookies.items():
-        if name in har.cookies:
-            content = har.cookies[name]
-            for pattern in patterns:
-                if pattern.regex.search(content):
-                    detections.append(
-                        Detection(
-                            url=har.url,
-                            fingerprint=fingerprint,
-                            app_type="cookies",
-                            pattern=pattern,
-                            value=content,
-                            key=name,
-                        )
+        if name not in har.cookies:
+            continue
+
+        content = har.cookies[name]
+        for pattern in patterns:
+            if pattern.regex.search(content):
+                detections.append(
+                    Detection(
+                        url=har.url,
+                        fingerprint=fingerprint,
+                        app_type="cookies",
+                        pattern=pattern,
+                        value=content,
+                        key=name,
                     )
+                )
 
     return detections
 
@@ -368,6 +370,50 @@ def filter_by_excludes(detections: list[Detection]) -> list[Detection]:
 Analyze = Callable[[HarWrapper, schemas.Fingerprint], list[Detection]]
 
 
+def set_categories(
+    detections: list[Detection], *, categories: schemas.Categories
+) -> list[Detection]:
+    if not categories:
+        return detections
+
+    for detection in detections:
+        memo: dict[str, schemas.Category] = {}
+
+        for category_id in detection.fingerprint.cats:
+            category = categories.root.get(str(category_id))
+            if category:
+                memo[category.id] = category
+
+        if any(memo):
+            detection.categories = list(memo.values())
+
+    return detections
+
+
+def set_groups(
+    detections: list[Detection], *, groups: schemas.Groups
+) -> list[Detection]:
+    if not groups:
+        return detections
+
+    for detection in detections:
+        memo: dict[str, schemas.Group] = {}
+
+        if not detection.categories:
+            continue
+
+        for category in detection.categories:
+            for group_id in category.groups:
+                group = groups.root.get(str(group_id))
+                if group:
+                    memo[group.id] = group
+
+        if any(memo):
+            detection.groups = list(memo.values())
+
+    return detections
+
+
 class Wappalyzer:
     def __init__(
         self,
@@ -378,73 +424,6 @@ class Wappalyzer:
         self.fingerprints = fingerprints or schemas.Fingerprints(root={})
         self.categories = categories or schemas.Categories(root={})
         self.groups = groups or schemas.Groups(root={})
-
-    def load_fingerprints(self, path: str) -> None:
-        """Load fingerprints.
-
-        Args:
-            path (str): Glob patterns for the fingerprint files.
-
-        Returns:
-            None
-        """
-        self.fingerprints = load_fingerprints(path)
-
-    def load_groups(self, path: str | Path):
-        """Load groups.
-
-        Args:
-            path (str | Path): Path to the groups.
-
-        Returns:
-            None
-        """
-        self.groups = load_groups(path)
-
-    def load_categories(self, path: str | Path):
-        """Load categories.
-
-        Args:
-            path (str | Path): Path to the categories.
-
-        Returns:
-            None
-        """
-        self.categories = load_categories(path)
-
-    def _set_categories(self, detections: list[Detection]):
-        if not self.categories:
-            return
-
-        for detection in detections:
-            memo: dict[str, schemas.Category] = {}
-
-            for category_id in detection.fingerprint.cats:
-                category = self.categories.root.get(str(category_id))
-                if category:
-                    memo[category.id] = category
-
-            if any(memo):
-                detection.categories = list(memo.values())
-
-    def _set_groups(self, detections: list[Detection]):
-        if not self.groups:
-            return
-
-        for detection in detections:
-            memo: dict[str, schemas.Group] = {}
-
-            if not detection.categories:
-                continue
-
-            for category in detection.categories:
-                for group_id in category.groups:
-                    group = self.groups.root.get(str(group_id))
-                    if group:
-                        memo[group.id] = group
-
-            if any(memo):
-                detection.groups = list(memo.values())
 
     def analyze(self, har: schemas.Har | Any, *, analyzes: list[Analyze] | None = None):
         """Analyze HAR.
@@ -487,7 +466,11 @@ class Wappalyzer:
             )(detections),
         )
 
-        self._set_categories(filtered)
-        self._set_groups(filtered)
-
-        return filtered
+        return cast(
+            list[Detection],
+            pipe(
+                list[Detection],
+                partial(set_categories, categories=self.categories),
+                partial(set_groups, groups=self.groups),
+            )(filtered),
+        )

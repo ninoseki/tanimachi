@@ -1,10 +1,4 @@
 from .schemas import Categories, Fingerprints, Groups, Har  # noqa: F401
-from .utils import (  # noqa: F401
-    load_categories,
-    load_fingerprints,
-    load_groups,
-    load_har,
-)
 from .wappalyzer import (  # noqa: F401
     Wappalyzer,
     analyze_css,

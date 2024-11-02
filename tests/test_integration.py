@@ -1,8 +1,6 @@
-import glob
-import json
 import tempfile
+from collections.abc import Iterable
 from functools import lru_cache
-from typing import Any
 
 import pytest
 from _pytest.fixtures import SubRequest
@@ -12,16 +10,13 @@ from tanimachi import Wappalyzer, schemas
 
 
 @lru_cache(maxsize=1)
-def get_fingerprints():
+def get_fingerprints() -> Iterable[schemas.Fingerprint]:
     with tempfile.TemporaryDirectory() as dir:
         Repo.clone_from("https://github.com/enthec/webappanalyzer", dir)
-
-        memo: dict[str, Any] = {}
-        for path in glob.glob(f"{dir}/src/technologies/*.json"):
-            with open(path) as f:
-                memo.update(json.load(f))
-
-        return schemas.Fingerprints.model_validate(memo).root.values()
+        fingerprints = schemas.Fingerprints.model_validate_pattern(
+            f"{dir}/src/technologies/*.json"
+        )
+        return fingerprints.root.values()
 
 
 @pytest.fixture(params=get_fingerprints())
